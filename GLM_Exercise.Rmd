@@ -1,0 +1,73 @@
+---
+title: "GLM Exercise for Advanced Methods"
+author: "S.K. Krueger"
+date: "2021-09-10"
+output:
+  html_document:
+    df_print: paged
+  fig_caption: yes
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+
+#Install packages
+library(ggplot2)
+library(arm)
+library(ggfortify)
+library(AICcmodavg)
+library(grid)
+```
+![](photos/Andrena_bee.jpg)
+
+I will begin with an example of a binary generalized linear model using data published by Kuhlman et al. (2021). This study measured bee *Andrena spp.* presence and absence related to flower richness. Surveys were taken from 2015-2016. A total of 51 bees were surveyed and 122 species of flowers were documented.
+
+One goal of this study was to determine whether there was a relationship between flower richness and the presence or absence of bees, in hopes of understanding patterns in the bee community in Logan, Utah.
+
+In my model, flower richness is the predictor variable and bee presence or absence is the response variable. If there is a relationship between the two variables, it would be flower richness affecting bee occurrence, not the presence of bees affecting the richness.
+
+Because there are growing concerns about declining bee populations, another goal would be to find an equation that would predict the probability of a bee population surviving on a landscape with a particular flower richness to help determine which landscapes to introduce bees to.  
+
+```{r import data}
+#Make sure to select working directory
+library(readr)
+bees <- read_csv("bee_data.csv")
+bees[!duplicated(bees), ]
+```
+
+```{r plot, message=FALSE, warning=FALSE}
+ggplot(bees, aes(Flower_Richness, pres)) +
+  geom_point(size=3) +
+  geom_smooth(method="glm", method.args=list(family="binomial"(link="logit"))) +
+  labs(title="GLM, binomial count (1=presence/0=absence)") +
+  ylab ("Probability of Occurence") +
+  xlab ("Flower Richness")
+```
+```{r model_grainsize}
+model_bees <- glm(pres ~ Flower_Richness, data=bees, family=binomial)
+model_bees
+```
+
+```{r check for overdispersion}
+library(arm)
+x <- predict(model_bees)
+y <- resid(model_bees)
+binnedplot(x, y)
+```
+
+```{r bee model coefficients}
+coef(model_bees)
+```
+
+```{r bee model confidence intervals}
+confint(model_bees)
+```
+
+Now I want to interpret the slope of the logistic regression. Dividing the slope coefficient by four will give us an approximate estimate for the maximum predicted effect on the response of a unit change in the predictor. Slope of X variable is X.
+\
+\
+In this case, a difference in X unit of grain size (mm) corresponds to a increase in the probability of switching of 128% since 5.1/4 = 1.28. (*100 to convert to percent=128%). Notice the scale of grainsize; it is 0.24 to 1.24 mm.  
+
+```{r model summary}
+summary(model_spider)
+```
