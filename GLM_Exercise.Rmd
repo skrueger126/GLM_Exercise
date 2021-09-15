@@ -34,7 +34,7 @@ In my model, flower richness is the predictor variable and bee presence or absen
 
 Because there are growing concerns about declining bee populations, another goal would be to find an equation that would predict the probability of a bee population surviving on a landscape with a particular flower richness to help determine which landscapes to introduce bees to.  
 
-```{r import data}
+```{r import data, message=FALSE, warning=FALSE}
 library(readr)
 bees <- read_csv("bee_data.csv")
 ```
@@ -56,7 +56,7 @@ Next, I ran a GLM with presence as the response variable and flower richness as 
 model_bees <- glm(pres ~ Flower_Richness, data=bees, family=binomial)
 model_bees
 ```
-Now, I want to check for overdispersion. We cannot use the ratio of the residual deviance to residual DF to look for overdispersion as we do with binomial counts (and Poisson GLMs). I used the `arm` package that uses the `binnedplot()` function to offer a graphical approach.
+Now, I want to check for overdispersion. I used the `arm` package that uses the `binnedplot()` function to offer a graphical approach.
 
 The gray lines in the plot indicate ±2 standard errors, within which approximately 95% of the binned residuals are expected to fall.
 
