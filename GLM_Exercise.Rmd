@@ -1,7 +1,7 @@
 ---
 title: "GLM Exercises for Advanced Methods"
 author: "S.K. Krueger"
-date: "2021-09-10"
+date: "2021-09-16"
 output:
   html_document:
     df_print: paged
@@ -35,24 +35,30 @@ In my model, flower richness is the predictor variable and bee presence or absen
 Because there are growing concerns about declining bee populations, another goal would be to find an equation that would predict the probability of a bee population surviving on a landscape with a particular flower richness to help determine which landscapes to introduce bees to.  
 
 ```{r import data}
-#Make sure to select working directory
 library(readr)
 bees <- read_csv("bee_data.csv")
-bees[!duplicated(bees), ]
 ```
 
-```{r plot, message=FALSE, warning=FALSE}
+Firstly, I wanted to visualize the data to compare bee presense to flower richness.
+
+```{r, message=FALSE, warning=FALSE}
 ggplot(bees, aes(Flower_Richness, pres)) +
   geom_point(size=3) +
   geom_smooth(method="glm", method.args=list(family="binomial"(link="logit"))) +
-  labs(title="GLM, binomial count (1=presence/0=absence)") +
-  ylab ("Probability of Occurence") +
+  labs(title="GLM, binomial count (1 = presence/0 = absence)") +
+  ylab ("Probability of Bee Occurence") +
   xlab ("Flower Richness")
 ```
-```{r model_grainsize}
+
+Next, I ran a GLM with presence as the response variable and flower richness as the predictor variable. 
+
+```{r model}
 model_bees <- glm(pres ~ Flower_Richness, data=bees, family=binomial)
 model_bees
 ```
+Now, I want to check for overdispersion. We cannot use the ratio of the residual deviance to residual DF to look for overdispersion as we do with binomial counts (and Poisson GLMs). I used the `arm` package that uses the `binnedplot()` function to offer a graphical approach.
+
+The gray lines in the plot indicate ±2 standard errors, within which approximately 95% of the binned residuals are expected to fall.
 
 ```{r check for overdispersion}
 library(arm)
@@ -61,18 +67,21 @@ y <- resid(model_bees)
 binnedplot(x, y)
 ```
 
+Next, I ran the model coefficients. 
+
 ```{r bee model coefficients}
 coef(model_bees)
 ```
 
-```{r bee model confidence intervals}
+```{r bee model confidence intervals, message=FALSE, warning=FALSE}
 confint(model_bees)
 ```
 
 Now I want to interpret the slope of the logistic regression. Dividing the slope coefficient by four will give us an approximate estimate for the maximum predicted effect on the response of a unit change in the predictor. Slope of flower richness variable is 1.3.
-\
-\
-In this case, a difference in 1 flower species corresponds to a increase in the probability of occurrence by 32.5% since 1.3/4 = 0.325. (*100 to convert to percent= 32.5%).   
+
+In this case, a difference in 1 flower species corresponds to a maximum increase in the probability of occurrence by 32.5% since 1.3/4 = 0.325.   
+
+Now, let's run the model summary to assess significance.
 
 ```{r model summary}
 summary(model_bees)
@@ -80,59 +89,68 @@ summary(model_bees)
 
 ![](photos/bicolor.jpg)
 
-
 I will now show an example of a generalized linear model using data published by Senawi et al. (2015). 
 
 This study examined the correlation between morphological variation and bite force of 35 species of insectivorous bats in Pahang, Malaysia. Bite force was measured by using a bite force transducer setup (pictured below). This device is able to register the force produced by a bat as it bites voluntarily; it converts the pull produced by the bite, applied on a tape-covered metal plate, into an electrical impulse that is read by a force amplifier.
 
 ![](photos/bite.force.jpg)
 
-1.	Is there a relationship between head length and maximum bite force (N) in bats? 
-
-2.	Does sex modify the relationship between head length and bite force (N) in bats?
-
-3.	Is bite force different after accounting for both head length AND sex? (hint: use library(emmeans) for pairwise comparisons of covariate-adjusted means)
+1.	Is there a relationship between head length and maximum bite force (Newton) in bats? 
 
 ```{r message=FALSE, warning=FALSE}
 library(readr)
 library(emmeans)
 bats <- read_csv("bite.force.csv")
-View(bats)
+```
 
+Firstly, I ran my model with bite force as the predictor variable and head length as the response variable.
+```{r message=FALSE, warning=FALSE}
 bats.poisson <- glm(MaxBF.N ~ Head.length, family= poisson(link=log), data= bats)
-
-bats.gauss <- glm(MaxBF.N ~ Head.length, family= gaussian(link=identity), data= bats)
-
-#sprint.gamma <- glm(Max_2m~HLL, family=Gamma(link= "sqrt"), data= lizard_sprint)
-anova(bats.poisson, bats.gauss, test = "Chisq")
 ```
 
-
-```{r message=FALSE, warning=FALSE, fig.height=6, fig.width=6}
-bats1 <- ggplot(bats,aes(Head.length, MaxBF.N))+geom_point() +
-  geom_smooth(method="glm",colour="red",
-                         method.args=list(family="poisson"(link="log")))+
-  labs(title="GLM, log link, Poisson variance")
-
-bats2 <- ggplot(bats,aes(Head.length, MaxBF.N))+geom_point() +
-  geom_smooth(method="glm",colour="red",
-                         method.args=list(family="gaussian"(link="identity")))+
-  labs(title="GLM, identity link, Gaussian variance")
-
-#p3 <-ggplot(lizard_sprint,aes(HLL,Max_2m))+geom_point() +
-  #geom_smooth(method="glm",colour="red",
-                         #method.args=list(family="Gamma"(link="sqrt")))+
-  #labs(title="GLM, square-root link, Gamma variance")
-
-grid.arrange(bats1, bats2, ncol=1)
+```{r plot, message=FALSE, warning=FALSE, fig.width=4, fig.height=4}
+ggplot(bats, aes(Head.length, MaxBF.N)) +
+  geom_point(size=3) +
+  stat_smooth(method = glm, method.args = list(family = poisson(link =   "log")))+ 
+  labs(title="GLM, poisson distributed count data") +
+  xlab ("Head Length (mm)") +
+  ylab ("Bite Force (N)")
 ```
 
-```{r message=FALSE, warning=FALSE}
-bats1+geom_point(aes(colour = factor(Sex)))
+```{r, message=FALSE, warning=FALSE}
+autoplot(bats.poisson)
 ```
 
-```{r message=FALSE, warning=FALSE}
-bats.poisson.sex <- glm(MaxBF.N ~ Head.length + factor(Sex), family= poisson(link=log), data= bats)
-anova(bats.poisson.sex)
-summary(bats.poisson.sex)
+I checked for overdispersion by dividing the residual deviance by the degrees of freedom. The model is overdispered (3295.5/787 = 4.18) so I can use *quasi-maximum* likelihood to take it into account by estimating the observed level of variation and adjusting the standard errors accordingly.
+
+```{r}
+anova(bats.poisson)
 ```
+```{r}
+bats.quasi <- glm(MaxBF.N ~ Head.length, family= quasipoisson, data= bats)
+summary(bats.quasi)
+```
+
+The residual deviance is now 1119.2 and DF is 787 so 1119.2/787 = 1.4. MUCH BETTER!
+
+Now, I graphed the new glm with the quasipoisson.
+
+```{r plot 2, message=FALSE, warning=FALSE, fig.width=4, fig.height=4}
+ggplot(bats, aes(Head.length, MaxBF.N)) +
+  geom_point(size=3) +
+  stat_smooth(method = glm, method.args = list(family = quasipoisson))+ 
+  labs(title="GLM, quasipoisson distributed count data") +
+  xlab ("Head Length (mm)") +
+  ylab ("Bite Force (N)")
+```
+
+For "fun":
+What is the expected bite force at 40 (mm) head length?
+
+```{r Exponentiate the prediction}
+exp(-0.857227 + 0.113916 * 40)
+```
+A bat with a 40 (mm) head length would be expected to have a 40.4 (M) bite force! 
+
+
+
